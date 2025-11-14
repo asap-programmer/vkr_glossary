@@ -1,8 +1,3 @@
-"""
-Blockchain Glossary API
-FastAPI приложение для управления глоссарием терминов блокчейн-платформ
-"""
-
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -11,7 +6,6 @@ import uvicorn
 
 from app import models, schemas, database
 
-# Создание таблиц в БД при старте приложения
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
@@ -27,7 +21,6 @@ app = FastAPI(
     },
 )
 
-# CORS middleware для доступа из браузера
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,7 +31,6 @@ app.add_middleware(
 
 
 def get_db():
-    """Dependency для получения сессии БД"""
     db = database.SessionLocal()
     try:
         yield db
@@ -48,13 +40,10 @@ def get_db():
 
 @app.on_event("startup")
 async def startup_event():
-    """Инициализация данных при старте приложения"""
     db = database.SessionLocal()
     try:
-        # Проверяем, есть ли уже данные
         existing_count = db.query(models.Term).count()
         if existing_count == 0:
-            # Добавляем начальные термины по блокчейну
             initial_terms = [
                 {
                     "keyword": "Blockchain",
@@ -132,7 +121,6 @@ async def startup_event():
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Корневой endpoint с информацией об API"""
     return {
         "message": "Blockchain Glossary API",
         "description": "API для управления глоссарием терминов исследования производительности блокчейн-платформ",
@@ -155,13 +143,7 @@ async def get_all_terms(
     category: str = None,
     db: Session = Depends(get_db)
 ):
-    """
-    Получить список всех терминов
 
-    - **skip**: количество пропускаемых записей (для пагинации)
-    - **limit**: максимальное количество возвращаемых записей
-    - **category**: фильтр по категории (опционально)
-    """
     query = db.query(models.Term)
 
     if category:
@@ -173,11 +155,7 @@ async def get_all_terms(
 
 @app.get("/terms/{keyword}", response_model=schemas.Term, tags=["Terms"])
 async def get_term(keyword: str, db: Session = Depends(get_db)):
-    """
-    Получить информацию о конкретном термине по ключевому слову
 
-    - **keyword**: ключевое слово термина (регистр не учитывается)
-    """
     term = db.query(models.Term).filter(
         models.Term.keyword.ilike(keyword)
     ).first()
@@ -193,14 +171,6 @@ async def get_term(keyword: str, db: Session = Depends(get_db)):
 
 @app.post("/terms", response_model=schemas.Term, status_code=201, tags=["Terms"])
 async def create_term(term: schemas.TermCreate, db: Session = Depends(get_db)):
-    """
-    Добавить новый термин в глоссарий
-
-    - **keyword**: ключевое слово (должно быть уникальным)
-    - **definition**: определение термина
-    - **category**: категория термина (опционально)
-    """
-    # Проверяем, не существует ли уже такой термин
     existing_term = db.query(models.Term).filter(
         models.Term.keyword.ilike(term.keyword)
     ).first()
@@ -225,13 +195,7 @@ async def update_term(
     term_update: schemas.TermUpdate,
     db: Session = Depends(get_db)
 ):
-    """
-    Обновить существующий термин
 
-    - **keyword**: ключевое слово термина для обновления
-    - **definition**: новое определение (опционально)
-    - **category**: новая категория (опционально)
-    """
     db_term = db.query(models.Term).filter(
         models.Term.keyword.ilike(keyword)
     ).first()
@@ -255,11 +219,7 @@ async def update_term(
 
 @app.delete("/terms/{keyword}", tags=["Terms"])
 async def delete_term(keyword: str, db: Session = Depends(get_db)):
-    """
-    Удалить термин из глоссария
 
-    - **keyword**: ключевое слово термина для удаления
-    """
     db_term = db.query(models.Term).filter(
         models.Term.keyword.ilike(keyword)
     ).first()
@@ -281,9 +241,6 @@ async def delete_term(keyword: str, db: Session = Depends(get_db)):
 
 @app.get("/categories", tags=["Categories"])
 async def get_categories(db: Session = Depends(get_db)):
-    """
-    Получить список всех категорий терминов
-    """
     categories = db.query(models.Term.category).distinct().all()
     return {
         "categories": [cat[0] for cat in categories if cat[0]]
